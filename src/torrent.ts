@@ -649,7 +649,10 @@ export class Torrent extends EventEmitter implements PeerOwner, SwarmOwner {
   /** How many requests to keep outstanding with a peer: enough to cover its rate over one second plus a round trip. */
   private depth(peer: Peer): number {
     if (peer.snubbed) return 1;
-    const wanted = Math.ceil((peer.rateDown * (1 + peer.rtt / 1000)) / BLOCK);
+    // Never more than the download limits can take: requested blocks arrive even while reads are paused
+    let rate = peer.rateDown;
+    for (const limit of [this.downloadLimit, this.engine.downloadLimit]) if (!limit.unlimited) rate = Math.min(rate, limit.bytesPerSecond);
+    const wanted = Math.ceil((rate * (1 + peer.rtt / 1000)) / BLOCK);
     return Math.min(Math.max(wanted, MIN_DEPTH), peer.reqq, MAX_DEPTH);
   }
 
