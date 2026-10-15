@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bunx tsc --noEmit
+      - run: bun scripts/lines.ts
+      - run: bun test
+        env:
+          TT_PERF_SCALE: 2   # shared runners are slower and noisier than a dev machine

@@ -1,0 +1,53 @@
+{
+  "name": "tinytorrent",
+  "version": "0.1.0",
+  "description": "A tiny, fast BitTorrent engine for downloading and seeding, to build clients and services on. Pure TypeScript, zero dependencies, Bun first.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Neo Haggard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Benzo-Fury/tinytorrent.git"
+  },
+  "homepage": "https://github.com/Benzo-Fury/tinytorrent#readme",
+  "bugs": {
+    "url": "https://github.com/Benzo-Fury/tinytorrent/issues"
+  },
+  "keywords": [
+    "bittorrent",
+    "torrent",
+    "magnet",
+    "dht",
+    "p2p",
+    "seeding",
+    "bun",
+    "typescript"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "NOTICE",
+    "docs"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit",
+    "lines": "bun scripts/lines.ts",
+    "bench": "bun bench/cli.ts"
+  },
+  "engines": {
+    "bun": ">=1.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "typescript": "5",
+    "webtorrent": "3.0.21"
+  },
+  "patchedDependencies": {
+    "webtorrent@3.0.21": "patches/webtorrent@3.0.21.patch",
+    "bittorrent-protocol@5.0.9": "patches/bittorrent-protocol@5.0.9.patch"
+  }
+}

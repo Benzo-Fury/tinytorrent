@@ -1,0 +1,4 @@
+FROM debian:trixie-slim
+RUN apt-get update && apt-get install -y --no-install-recommends python3-libtorrent && rm -rf /var/lib/apt/lists/*
+COPY lt_peer.py /lt_peer.py
+ENTRYPOINT ["python3", "/lt_peer.py"]

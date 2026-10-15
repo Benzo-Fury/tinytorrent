@@ -1,0 +1,61 @@
+diff --git a/mse.js b/mse.js
+index 5e1ad842ea7e4f46fb82e2a3e309971729dc0aa6..834cee1194adf51bf8bf80dc078bc6501d22e36d 100644
+--- a/mse.js
++++ b/mse.js
+@@ -53,6 +53,47 @@ function createRC4Cipher (key) {
+ const DH_PRIME = 'ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a63a36210000000000090563'
+ const DH_GENERATOR = 2
+ 
++const DH_P = BigInt('0x' + DH_PRIME)
++const DH_G = BigInt(DH_GENERATOR)
++const DH_KEY_BYTES = 96
++
++// Diffie-Hellman over the fixed MSE group, in BigInt. crypto.createDiffieHellman
++// re-validates the prime on every call, which costs ~10-200ms of main-thread CPU
++// per connection (more on Bun and ARM); the group never changes, so skip it
++class MseKeyExchange {
++  constructor () {
++    // The MSE spec uses a 160-bit random private exponent
++    this._private = BigInt('0x' + arr2hex(randomBytes(20)))
++    this._public = null
++  }
++
++  generateKeys () {
++    if (!this._public) this._public = toKeyBytes(modPow(DH_G, this._private))
++    return this._public
++  }
++
++  computeSecret (otherPublic) {
++    const y = BigInt('0x' + (arr2hex(otherPublic) || '0'))
++    if (y <= 1n || y >= DH_P - 1n) throw new Error('Supplied key is invalid')
++    return toKeyBytes(modPow(y, this._private))
++  }
++}
++
++function modPow (base, exponent) {
++  let result = 1n
++  base %= DH_P
++  while (exponent > 0n) {
++    if (exponent & 1n) result = (result * base) % DH_P
++    exponent >>= 1n
++    base = (base * base) % DH_P
++  }
++  return result
++}
++
++function toKeyBytes (value) {
++  return Buffer.from(hex2arr(value.toString(16).padStart(DH_KEY_BYTES * 2, '0')))
++}
++
+ const REQ1_STR = text2arr('req1')
+ const REQ2_STR = text2arr('req2')
+ const REQ3_STR = text2arr('req3')
+@@ -128,7 +169,7 @@ export class MessageStreamEncryptor {
+ 
+   get dh () {
+     if (!this._dh) {
+-      this._dh = crypto.createDiffieHellman(DH_PRIME, 'hex', DH_GENERATOR)
++      this._dh = new MseKeyExchange()
+     }
+     return this._dh
+   }
