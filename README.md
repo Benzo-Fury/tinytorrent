@@ -12,7 +12,7 @@
 
 Tiny Torrent downloads and seeds with no runtime dependencies, in under 5,000 lines of code.
 
-- **Fast and light.** About **3× faster than WebTorrent** on a real swarm, and it keeps pace with qBittorrent's C++ engine at a fraction of its memory.
+- **Fast and light.** About **3× faster than WebTorrent** on a real swarm on a small ARM board, and it keeps pace with qBittorrent's C++ engine at a fraction of its memory.
 - **Download only what you want.** Read a torrent's file list before a single block is requested, then pick the files you want. Files you skip are never created on disk.
 - **A good seed.** Every downloader gets data within about a second, and upload slots take turns so the swarm is served fairly.
 - **Built for servers.** Seed limits that survive restarts, per-torrent and engine-wide speed limits, and every socket bindable to a VPN.
@@ -237,21 +237,21 @@ Every Tiny Torrent number below comes from the same pure TypeScript engine: no n
 
 ### Downloading
 
-An Orange Pi 5 Plus (8-core ARM) downloaded from the Debian DVD's public swarm over a home connection, with no VPN. Each engine ran for 90 s, back to back, in two rounds; these are the averages:
+Each engine downloaded from the Debian DVD's public swarm for 90 s over a home connection with no VPN, back to back, in two rounds. These are the averages on a fast machine (an M-series Mac) and a small one (an Orange Pi 5 Plus, 8-core ARM):
 
-| Engine | Language | Speed | CPU per GB | Memory |
-|---|---|---|---|---|
-| **Tiny Torrent** | TypeScript | **146 Mbit/s** | 16 s | 320 MB |
-| qBittorrent (libtorrent) | C++ | 120 Mbit/s | 28 s | 1.3 GB |
-| aria2 | C++ | 134 Mbit/s | 10 s | 35 MB |
-| WebTorrent | JavaScript | 48 Mbit/s | 173 s | 300 MB |
+| Engine | Language | Mac | ARM board | CPU per GB (ARM) | Memory (ARM) |
+|---|---|---|---|---|---|
+| **Tiny Torrent** | TypeScript | 122 Mbit/s | **146 Mbit/s** | 16 s | 320 MB |
+| qBittorrent (libtorrent) | C++ | **137 Mbit/s** | 120 Mbit/s | 28 s | 1.3 GB |
+| aria2 | C++ | 124 Mbit/s | 134 Mbit/s | 10 s | 35 MB |
+| WebTorrent | JavaScript | 92 Mbit/s | 48 Mbit/s | 173 s | 300 MB |
 
-- **Fastest of the four**: about **20% faster than qBittorrent**, with 40% less CPU and a quarter of the memory.
-- **3× faster than WebTorrent** at about 11× less CPU per byte. WebTorrent is limited by its CPU and keeps a whole core busy.
-- About **9% faster than aria2**, which uses the least CPU.
+- **On the ARM board, Tiny Torrent is the fastest**: about 20% ahead of qBittorrent, with 40% less CPU and a quarter of the memory.
+- **On the Mac, qBittorrent leads** by about 12%, with Tiny Torrent and aria2 level behind it. Part of that lead is the torrent's HTTP web seed, which Tiny Torrent doesn't use.
+- **3× faster than WebTorrent** on ARM at about 11× less CPU per byte. WebTorrent is limited by its CPU: on the small board it keeps a whole core busy.
 
 > [!NOTE]
-> qBittorrent also used the torrent's HTTP web seed. Tiny Torrent doesn't use web seeds. Results through a VPN, on a Mac and in a local swarm are in [Benchmarks](docs/BENCHMARKS.md#downloading).
+> Real swarms change from hour to hour, so compare engines within one machine's column. Local runs with no network in the way, and runs through a VPN, are in [Benchmarks](docs/BENCHMARKS.md#the-three-setups).
 
 ### Seeding
 
@@ -270,12 +270,12 @@ One engine seeded a 1 GiB file to 8 lean downloaders on the same machine. The do
 
 | Engine | ARM board (8 cores) | M-series Mac |
 |---|---|---|
-| **Tiny Torrent** | **10.3 Gbit/s** | **52 Gbit/s** |
-| qBittorrent (libtorrent) | 11.0 Gbit/s | 45 Gbit/s |
-| aria2 | 5.6 Gbit/s | — |
-| WebTorrent | 2.4 Gbit/s | 14 Gbit/s |
+| **Tiny Torrent** | **10.3 Gbit/s** | **55 Gbit/s** |
+| qBittorrent (libtorrent) | 11.0 Gbit/s | 43 Gbit/s |
+| aria2 | 5.6 Gbit/s | 22 Gbit/s |
+| WebTorrent | 2.4 Gbit/s | 13 Gbit/s |
 
-- **Close to qBittorrent's C++ engine.** Core for core, qBittorrent is about 20% faster in plaintext and Tiny Torrent 8% faster with encryption. On a whole machine Tiny Torrent is within 7% on ARM and 14% ahead on the Mac, in a seventh of the memory.
+- **Close to qBittorrent's C++ engine.** Core for core, qBittorrent is about 20% faster in plaintext and Tiny Torrent 8% faster with encryption. On a whole machine Tiny Torrent is within 7% on ARM and 28% ahead on the Mac, in a seventh of the memory.
 - **3.6× faster than WebTorrent** per core in plaintext, and 1.6× with encryption.
 - **Faster than aria2 in plaintext,** and fair: every downloader gets its first byte within a second, where aria2 serves only some at a time. aria2 is fastest with encryption, using OpenSSL's cipher.
 - An idle engine uses about 1% of an ARM core.

@@ -2,7 +2,7 @@
 
 > In-depth reference. The [README](../README.md#how-fast-is-it) has the headline numbers. This page has the targets the engine is held to, every result with how it was measured, and how to run the benchmarks yourself.
 
-**On this page:** [Targets](#targets) · [Hardware](#hardware) · [Downloading](#downloading) ([no VPN](#1-a-real-swarm-no-vpn) · [VPN](#2-a-real-swarm-through-a-vpn) · [local](#3-a-local-swarm)) · [Seeding](#seeding) · [Engine path and microbenchmarks](#engine-path-and-microbenchmarks) · [Running them](#running-them) · [How they measure](#how-they-measure)
+**On this page:** [Targets](#targets) · [Hardware](#hardware) · [The three setups](#the-three-setups): [1. Local](#1-local) · [2. A real swarm](#2-a-real-swarm) · [3. Through a VPN](#3-a-real-swarm-through-a-vpn) · [Idle cost](#idle-cost) · [Engine path and microbenchmarks](#engine-path-and-microbenchmarks) · [Running them](#running-them) · [How they measure](#how-they-measure)
 
 ---
 
@@ -14,9 +14,9 @@ Changes to the engine should keep these. Re-measure the affected ones before mer
 
 | Target | Result |
 |---|---|
-| On a real swarm with no VPN, at least 90% of aria2's speed and level with qBittorrent | 1.09× aria2 (146 vs 134 Mbit/s); 1.21× qBittorrent (120) on ARM |
-| The same through a VPN | 1.3× aria2 (113 vs 88 Mbit/s); qBittorrent 107 |
-| Under 15 CPU-seconds per GB on the ARM board in a local swarm | 7.1 |
+| On a real swarm, at least 90% of aria2's speed and level with qBittorrent | ARM: 1.09× aria2, 1.21× qBittorrent. Mac: 0.98× aria2, **0.89× qBittorrent (missed)** |
+| The same through a VPN | ARM: 1.21× aria2, 1.02× qBittorrent. Mac: 1.24× aria2, 1.13× qBittorrent |
+| Under 15 CPU-seconds per GB on the ARM board in a local swarm | 7.1–7.6 |
 | Engine path at least 300 MB/s (`perf.test.ts` gate) | About 1.5 GB/s |
 | Under 1 KB of heap growth per block (`perf.test.ts` gate) | About 7 bytes |
 | Memory bounded at full speed: under 300 MB while downloading 2 GiB at over 4 Gbit/s on ARM | 198–284 MB (piece writes waiting for the disk are capped; `engine.test.ts`) |
@@ -26,119 +26,84 @@ Changes to the engine should keep these. Re-measure the affected ones before mer
 | Target | Result |
 |---|---|
 | Per core, at least 80% of qBittorrent's plaintext upload, and level with it using RC4 | 82% (6.9 vs 8.5 Gbit/s); RC4 1.08× (1.90 vs 1.75) |
-| On a whole machine, within 10% of qBittorrent | ARM 0.93× (10.3 vs 11.0 Gbit/s); Mac 1.14× (51.9 vs 45.4) |
-| At least 1.5× WebTorrent on every setup | ARM core 3.6× plaintext, 1.6× RC4; Mac 3.7× and 1.4× (just short with RC4) |
+| On a whole machine, within 10% of qBittorrent | ARM 0.93× (10.3 vs 11.0 Gbit/s); Mac 1.28× (54.8 vs 42.9) |
+| At least 1.5× WebTorrent on every setup | ARM core 3.6× plaintext, 1.6× RC4; Mac 4.1× and 1.4× (just short with RC4) |
 | CPU per GB uploaded on an ARM core: at most 1.2 s plaintext, 4.5 s RC4 | 1.15 s and 4.22 s |
-| The slowest leecher's first byte within a second | 0.6 s (aria2: some never served in 20 s) |
-| Fairness (Jain's index halfway through) at least 0.95 | 1.00 (aria2: 0.53) |
+| The slowest leecher's first byte within a second | 0.5–0.6 s (aria2: some never served in 20 s) |
+| Fairness (Jain's index halfway through) at least 0.95 | 1.00 (aria2: 0.49–0.69) |
 | Complete data to serving in under 0.5 s with resume state or seed mode | Asserted in `seeding.test.ts` |
-| Memory bounded: at most 32 MiB read cache per torrent, a 16 MiB batch pool, and 200 MB per process on ARM | 134–165 MB peak RSS on ARM (qBittorrent: 1.1 GB); up to 260 MB on macOS |
+| Memory bounded: at most 32 MiB read cache per torrent, a 16 MiB batch pool, and 200 MB per process on ARM | 134–165 MB peak RSS on ARM (qBittorrent: 1.1 GB); up to 155 MB on macOS |
 
 **Correctness** (not speed, but held just as firmly): every conformance case passes against libtorrent and Transmission ([Development](DEVELOPMENT.md#conformance-against-real-clients)).
 
 ## Hardware
 
+Every benchmark runs on two machines, to show how the engines behave on a fast computer and on a small, low-powered board:
+
 | Name | Machine |
 |---|---|
-| **ARM** | Orange Pi 5 Plus: RK3588, 8 cores (4× A76 + 4× A55), NVMe, Bun in Docker |
-| **Mac** | Apple M-series laptop |
-| **Home lines** | ARM: Superloop, Brisbane (peaked at 225 Mbit/s in the runs). Mac: NextHop, Brisbane, over Wi-Fi |
-| **VPN** | AirVPN over OpenVPN UDP, from Brisbane |
+| **Mac** (high-end) | Apple M-series laptop, wired to the LAN |
+| **ARM** (low-powered) | Orange Pi 5 Plus: RK3588, 8 cores (4× A76 + 4× A55), NVMe, Bun in Docker, wired to the LAN |
+| **Home line** | Shared by both: Superloop, Brisbane. It peaked at about 230 Mbit/s during the runs |
+| **VPN** | AirVPN, the same server for both machines: Iskandar, Tokyo. ARM through a `gluetun` container (OpenVPN UDP), the Mac through AirVPN's Eddie client |
 | **Versions** | aria2 1.37, WebTorrent 3.0.21 (with the fixes in `patches/`), qBittorrent 5.1.0 (Debian's `qbittorrent-nox`, libtorrent 2.0) on ARM, and qBittorrent 5 (libtorrent 2) on the Mac |
 
 Results are from October 2026.
 
-## Downloading
+## The three setups
 
-Three setups, each answering a different question:
-
-| Setup | What it shows |
-|---|---|
-| [1. A real swarm, no VPN](#1-a-real-swarm-no-vpn) | Raw speed against real peers on a home line |
-| [2. A real swarm, through a VPN](#2-a-real-swarm-through-a-vpn) | How the engines compare on a constrained, high-latency link, as many self-hosters run them |
-| [3. A local swarm](#3-a-local-swarm) | The engine's own ceiling, with no internet in the way |
-
-Compare engines only within one setup and one session: the swarm changes from hour to hour.
-
-### 1. A real swarm, no VPN
-
-Debian 13.7 DVD torrent (15,232 pieces of 256 KiB), 90 s per engine, back to back on the same connection, with nothing between the engine and the internet. There were two rounds in opposite orders; each cell gives round 1 / round 2.
-
-**ARM**, Docker's default network on a Brisbane home connection (Superloop). The line peaked at 225 Mbit/s during the runs; a single HTTP download from a local mirror reached 145–160.
-
-| Engine | Average Mbit/s | Steady (after 20 s) | Peak 5 s | CPU s/GB | Peak RSS MB | Peers |
-|---|---|---|---|---|---|---|
-| **Tiny Torrent** | **148.3 / 142.8** | 161.3 / 153.4 | 224 / 217 | 15.4 / 16.8 | 317 / 328 | 183 / 195 |
-| qBittorrent 5.1.0 | 131.9 / 109.0 | 142.8 / 138.8 | 207 / 223 | 25.1 / 30.9 | 1,477 / 1,216 | 173 / 192 |
-| aria2 1.37 | 145.0 / 123.2 | 165.4 / 153.7 | 225 / 217 | 9.7 / 9.9 | 35 / 33 | 82 / 80 |
-| WebTorrent 3.0.21 | 52.4 / 43.9 | 48.5 / 41.9 | 98 / 95 | 158 / 188 | 290 / 306 | 151 / 176 |
-
-Averaged over both rounds:
-- **Tiny Torrent is the fastest** (146 Mbit/s), about 20% ahead of qBittorrent (120) at 40% less CPU per GB and a quarter of the memory.
-- **aria2** is close behind (134) and the cheapest per GB, with fewer than half the peers.
-- **WebTorrent** is held back by its CPU again: a whole core busy (103–104%) for a third of the speed.
-
-**Mac**, a different home connection (NextHop, Brisbane, over Wi-Fi), where a single HTTP download reached 36–120 Mbit/s:
-
-| Engine | Average Mbit/s | Steady | Peak 5 s | CPU s/GB | Peak RSS MB |
-|---|---|---|---|---|---|
-| **Tiny Torrent** | 132.6 / 133.5 | 142.5 / 143.2 | 159 / 163 | 9.3 / 10.4 | 115 / 88 |
-| qBittorrent 5 | 134.8 / 132.5 | 142.8 / 144.3 | 189 / 189 | 10.4 / 11.0 | 876 / 858 |
-| aria2 1.37 | 128.5 / 134.7 | 136.9 / 141.0 | 173 / 163 | 9.1 / 9.8 | 39 / 54 |
-| WebTorrent 3.0.21 | 130.5 / 127.6 | 136.1 / 133.2 | 149 / 152 | 39.9 / 52.9 | 101 / 106 |
-
-- **The line is the limit here.** Every engine averaged 128–135 Mbit/s, within about 3% of each other, so this run shows that the engines can fill this connection, not which one is faster. On the Mac even WebTorrent has CPU to spare.
-- **Tiny Torrent used the least memory after aria2**, and a seventh of qBittorrent's.
-
-Notes:
-- **qBittorrent** also used the torrent's HTTP web seed (a Debian mirror). Tiny Torrent doesn't use web seeds.
-- **Hash failures:** Tiny Torrent saw one or two per run, each from a piece assembled from several peers, and refetched it.
-
-### 2. A real swarm, through a VPN
-
-ARM, Tokyo exit. Debian 13.7 DVD torrent (15,232 pieces of 256 KiB), 90 s per engine, run back to back through the same tunnel. There were two rounds in different orders; each cell gives round 1 / round 2:
-
-| Engine | Average Mbit/s | Steady (after 20 s) | Peak 5 s | CPU s/GB | Peak RSS MB | Peers |
-|---|---|---|---|---|---|---|
-| **Tiny Torrent** | **109.0 / 116.8** | **123.0 / 133.4** | 159 / 160 | 19.4 / 19.6 | 262 / 289 | 189 / 192 |
-| qBittorrent 5.1.0 | 114.2 / 100.4 | 129.8 / 114.8 | 179 / 157 | 27.0 / 32.1 | 1,287 / 1,118 | 172 / 192 |
-| aria2 1.37 | 87.7 / 87.5 | 98.4 / 95.6 | 136 / 141 | 12.4 / 15.4 | 35 / 34 | 90 / 87 |
-| WebTorrent 3.0.21 | 35.6 / 35.6 | 37.1 / 34.2 | 73 / 66 | 221 / 232 | 299 / 306 | 162 / 159 |
-
-Averaged over both rounds:
-- **Tiny Torrent and qBittorrent are level** (113 vs 107 Mbit/s, inside the swarm's run-to-run swing). Tiny Torrent uses a third less CPU per GB and under a quarter of the memory.
-- **aria2** is the cheapest per GB, and about 30% slower.
-- **WebTorrent** is held back by its CPU: it kept a whole core busy (98–103%) for a third of the speed.
-
-Notes:
-- **qBittorrent** also used the torrent's HTTP web seed (Debian's mirror), which contributed about 9 Mbit/s. Tiny Torrent doesn't use web seeds.
-- **The spread** between runs comes from the swarm and the tunnel, not the engines. An earlier session on the same exit measured Tiny Torrent at 97.5 Mbit/s, aria2 at 50 and WebTorrent at 8, so compare engines only within one session.
-- **Most of the CPU** on this link is the kernel delivering ~1.2 KB packets through the tunnel. Every engine pays that cost; it is most of aria2's.
-
-Through a congested Singapore exit (peer round-trips of 0.8–3 s), Tiny Torrent reached 45.5 Mbit/s against aria2's 39.7. CPU per GB was higher there for both: many peers each sending ~35 KB/s make per-chunk costs dominate.
-
-A large real download: Ubuntu 26.04.1 live server, 2.93 GB, took 413 s (57 Mbit/s average) with 210 peers. One peer sent 12 corrupt pieces, and smart ban dropped exactly that one.
-
-**Trackerless magnet** (info hash only, cold DHT, no saved nodes):
-- first peer after 2.9 s;
-- metadata after 9 s;
-- then 55 Mbit/s steady from DHT and PEX peers alone.
-
-### 3. A local swarm
-
-ARM, 1 GiB payload, 4 Tiny Torrent seeders, on the same machine:
-
-| Latency | Engine | Mbit/s | CPU s/GB |
+| Setup | Downloading | Seeding | What it shows |
 |---|---|---|---|
-| 0 ms | **Tiny Torrent** | **1,307** | 7.5 |
-| 0 ms | WebTorrent | 956 | 12.7 |
-| 150 ms | **Tiny Torrent** | **1,096** | 7.1 |
-| 150 ms | WebTorrent | 728 | 13.5 |
-| 150 ms | aria2 | 441 | 6.7 |
+| [1. Local](#1-local) | ✓ | ✓ | Raw engine performance, with no network in the way |
+| [2. A real swarm](#2-a-real-swarm) | ✓ | — | Real peers on a home line, with no VPN |
+| [3. A real swarm through a VPN](#3-a-real-swarm-through-a-vpn) | ✓ | — | The same through a tunnel, as many self-hosters run it |
 
-The Tiny Torrent 150 ms row comes from a later session than the others. Its seeders are Tiny Torrent too, so their faster uploads account for part of the difference.
+Every cell compares all four engines on both machines.
 
-## Seeding
+Seeding to a real swarm isn't benchmarked. Popular legal torrents have far more seeders than downloaders (Ubuntu's tracker once counted 337 seeders and 11 leechers), so a new seed gets almost no requests, and the result would measure demand rather than the engine.
+
+Real-swarm results move with the swarm from hour to hour, so compare engines within one table, not across tables.
+
+## 1. Local
+
+Everything runs on one machine, so the engine itself is the limit.
+
+### Downloading
+
+A 1 GiB payload (256 KiB pieces) from 4 Tiny Torrent seeders. With 150 ms, every connection goes through a proxy that adds that much latency. Each engine ran twice; the cells give the average.
+
+**Mac:**
+
+| Latency | Engine | Mbit/s | CPU s/GB | Peak RSS MB |
+|---|---|---|---|---|
+| 0 ms | **Tiny Torrent** | **4,582** | 1.86 | 177–215 |
+| 0 ms | qBittorrent 5 | 2,972 | 1.90 | 845–897 |
+| 0 ms | aria2 1.37 | 1,504 | 2.66 | 16 |
+| 0 ms | WebTorrent 3.0.21 | 3,610 | 2.83 | 283–425 |
+| 150 ms | **Tiny Torrent** | **1,216** | 2.07 | 99–105 |
+| 150 ms | qBittorrent 5 | 962 | 2.11 | 824–844 |
+| 150 ms | aria2 1.37 | 604 | 2.60 | 16 |
+| 150 ms | WebTorrent 3.0.21 | 1,032 | 3.38 | 81–102 |
+
+**ARM:**
+
+| Latency | Engine | Mbit/s | CPU s/GB | Cores busy | Peak RSS MB |
+|---|---|---|---|---|---|
+| 0 ms | Tiny Torrent | 1,488 | 7.6 | 1.4 | 174–203 |
+| 0 ms | **qBittorrent 5.1.0** | **2,837** | 6.5 | 2.3 | 1,084–1,090 |
+| 0 ms | aria2 1.37 | 1,274 | 4.4 | 0.7 | 68 |
+| 0 ms | WebTorrent 3.0.21 | 953 | 12.6 | 1.5 | 240–245 |
+| 150 ms | **Tiny Torrent** | 1,109 | 7.1 | 1.0 | 150–155 |
+| 150 ms | **qBittorrent 5.1.0** | 1,152 | 8.2 | 1.2 | 1,058–1,060 |
+| 150 ms | aria2 1.37 | 634 | 5.3 | 0.4 | 68 |
+| 150 ms | WebTorrent 3.0.21 | 731 | 13.5 | 1.2 | 183–193 |
+
+- **On the Mac, Tiny Torrent is the fastest**: 1.5× qBittorrent with no latency and 1.3× with 150 ms, at the least CPU per GB.
+- **On ARM with no latency, qBittorrent is 1.9× faster.** Tiny Torrent does its work on one JavaScript thread ([How it works](HOW-IT-WORKS.md#performance-techniques)), and one A76 core runs out at about 1.5 Gbit/s; libtorrent spreads networking, hashing and disk over several threads. A Mac core is fast enough that the single thread isn't the limit.
+- **With 150 ms of latency on ARM, the two are level,** since latency rather than CPU becomes the limit.
+- That ceiling is far above any home connection: no real-swarm run came near it.
+
+### Seeding
 
 One engine seeds a 1 GiB payload (256 KiB pieces) to 8 connections from `bench/sink.ts`, spread over 4 processes, on the same machine:
 - **The sink is lean.** Each connection keeps 250 requests open and throws the blocks away: no hashing, no disk, no picker. It costs far less per byte than a real downloader, so the seeder is what's measured, not the load.
@@ -148,9 +113,18 @@ One engine seeds a 1 GiB payload (256 KiB pieces) to 8 connections from `bench/s
 
 Each engine ran twice, back to back; the cells give the average.
 
-### ARM, one core
+**Mac**, nothing pinned. The bench can't read qBittorrent's memory on macOS.
 
-The seeder is pinned to one A76 core and the load to the other seven (`--seeder-cpus 7 --load-cpus 0-6`), so this compares engines core for core.
+| Engine | Plaintext Mbit/s | CPU s/GB | RC4 Mbit/s | CPU s/GB | Peak RSS MB | Slowest 1st byte | Fairness |
+|---|---|---|---|---|---|---|---|
+| **Tiny Torrent** | **54,810** | **0.31** | 6,822 | 1.33 | 83–155 | 0.5 s | 1.00 |
+| qBittorrent 5 | 42,879 | 0.41 | 6,946 | 1.45 | — | 0.5 s | 1.00 |
+| aria2 1.37 | 21,578 | 0.35 | 6,107 | 1.21 | 27–29 | never, for some | 0.49–0.69 |
+| WebTorrent 3.0.21 | 13,331 | 1.08 | 4,996 | 2.08 | 170–245 | 0.5 s | 1.00 |
+
+On the Mac, Tiny Torrent is 28% faster than qBittorrent in plaintext and level with RC4 (2% behind), at less CPU per GB in both.
+
+**ARM, one core.** The seeder is pinned to one A76 core and the load to the other seven (`--seeder-cpus 7 --load-cpus 0-6`), so this compares engines core for core.
 
 | Engine | Encryption | Mbit/s | CPU s/GB | of it kernel | Peak RSS MB | Slowest 1st byte | Fairness |
 |---|---|---|---|---|---|---|---|
@@ -168,9 +142,7 @@ The seeder is pinned to one A76 core and the load to the other seven (`--seeder-
 - **Memory:** qBittorrent's 1.1 GB is mostly the payload's file pages, which count as resident because libtorrent maps the files into memory.
 - **aria2** unchokes a few peers at a time and rotates slowly, so within a 20 s run some connections never received a byte.
 
-### ARM, whole board
-
-Nothing pinned. A single-threaded engine may land on an A55 core, which is about a third as fast, so runs vary more; one Tiny Torrent RC4 run that did reached 0.96 Gbit/s against 2.16 in the other.
+**ARM, whole board.** Nothing pinned. A single-threaded engine may land on an A55 core, which is about a third as fast, so runs vary more; one Tiny Torrent RC4 run that did reached 0.96 Gbit/s against 2.16 in the other.
 
 | Engine | Plaintext Mbit/s | CPU s/GB | Cores busy | RC4 Mbit/s | Peak RSS MB |
 |---|---|---|---|---|---|
@@ -181,24 +153,69 @@ Nothing pinned. A single-threaded engine may land on an A55 core, which is about
 
 Tiny Torrent and qBittorrent are within 7% of each other in plaintext, and Tiny Torrent uses 10% less CPU per GB.
 
-### Mac
+## 2. A real swarm
 
-Nothing pinned. The bench can't read qBittorrent's memory on macOS.
+Debian 13.7 DVD torrent (15,232 pieces of 256 KiB), 90 s per engine, back to back, with nothing between the engine and the internet. There were two rounds in opposite orders; each cell gives round 1 / round 2. The ARM runs used Docker's default network.
 
-| Engine | Plaintext Mbit/s | CPU s/GB | RC4 Mbit/s | CPU s/GB | Peak RSS MB |
-|---|---|---|---|---|---|
-| **Tiny Torrent** | **51,855** | **0.34** | **8,551** | **1.08** | 160–260 |
-| qBittorrent 5 (libtorrent 2) | 45,372 | 0.39 | 8,504 | 1.22 | — |
-| WebTorrent 3.0.21 | 14,201 | 1.06 | 6,014 | 1.83 | 246–325 |
+**Mac:**
 
-On the Mac, Tiny Torrent is 14% faster than qBittorrent in plaintext and level with RC4, at less CPU per GB in both.
+| Engine | Average Mbit/s | Steady (after 20 s) | Peak 5 s | CPU s/GB | Peak RSS MB | Peers |
+|---|---|---|---|---|---|---|
+| Tiny Torrent | 110.9 / 132.9 | 116.3 / 142.9 | 171 / 181 | 8.4 / 7.6 | 194 / 217 | 192 / 194 |
+| **qBittorrent 5** | **136.1 / 137.4** | **146.0 / 149.8** | 231 / 211 | 8.5 / 9.8 | 821 / 843 | 165 / 178 |
+| aria2 1.37 | 129.4 / 118.2 | 140.5 / 136.6 | 197 / 181 | 8.0 / 10.0 | 37 / 41 | 113 / 111 |
+| WebTorrent 3.0.21 | 96.1 / 88.5 | 93.4 / 92.6 | 162 / 123 | 70.2 / 63.8 | 221 / 221 | 161 / 178 |
 
-### Over the internet
+- **qBittorrent is the fastest here** (137 Mbit/s), with aria2 (124) and Tiny Torrent (122) level behind it. Part of qBittorrent's lead is the torrent's HTTP web seed, which Tiny Torrent doesn't use.
+- **Tiny Torrent's first round ramped up slowly**: it went first, at about 11 MB/s from 30 to 60 s. In round 2 it was 3% behind qBittorrent.
+- Tiny Torrent used the least CPU per GB of the four, and a quarter of qBittorrent's memory.
 
-- **Through a VPN, ARM to the Mac.** A seeder ran on the ARM board inside the VPN's network namespace (Singapore exit, forwarded port), with four leechers on a Mac at home dialling the exit address. Results: Tiny Torrent 4.9 Mbit/s, aria2 5.5, WebTorrent 4.3. Every engine was held to the same few Mbit/s by the home uplink carrying the tunnel. This run shows that seeding works end to end through a VPN to the internet; it doesn't show any engine's limit.
-- **Public swarms.** `real-seed` downloaded Debian and Ubuntu images, then seeded them through the VPN with a reachable forwarded port, for 10–15 minutes. Those swarms had far more seeds than downloaders (the Ubuntu tracker counted 337 seeders and 11 leechers), so a new seed got almost no requests. What the runs do show is etiquette: hundreds of other seeds were met and dropped as `not needed`. Use the local benchmark for capacity.
+**ARM:**
 
-### Idle cost
+| Engine | Average Mbit/s | Steady (after 20 s) | Peak 5 s | CPU s/GB | Peak RSS MB | Peers |
+|---|---|---|---|---|---|---|
+| **Tiny Torrent** | **148.3 / 142.8** | 161.3 / 153.4 | 224 / 217 | 15.4 / 16.8 | 317 / 328 | 183 / 195 |
+| qBittorrent 5.1.0 | 131.9 / 109.0 | 142.8 / 138.8 | 207 / 223 | 25.1 / 30.9 | 1,477 / 1,216 | 173 / 192 |
+| aria2 1.37 | 145.0 / 123.2 | 165.4 / 153.7 | 225 / 217 | 9.7 / 9.9 | 35 / 33 | 82 / 80 |
+| WebTorrent 3.0.21 | 52.4 / 43.9 | 48.5 / 41.9 | 98 / 95 | 158 / 188 | 290 / 306 | 151 / 176 |
+
+- **Tiny Torrent is the fastest** (146 Mbit/s), about 20% ahead of qBittorrent (120) at 40% less CPU per GB and a quarter of the memory.
+- **aria2** is close behind (134) and the cheapest per GB, with fewer than half the peers.
+- **WebTorrent** is held back by its CPU: a whole core busy (103–104%) for a third of the speed. On the Mac it has CPU to spare and keeps up far better.
+
+Notes:
+- **The two machines ran in different sessions** (ARM in the morning, the Mac in the afternoon), so compare engines within each table.
+- **qBittorrent** also used the torrent's HTTP web seed (a Debian mirror). Tiny Torrent doesn't use web seeds.
+- **Hash failures:** Tiny Torrent saw one or two per run, each from a piece assembled from several peers, and refetched it.
+
+## 3. A real swarm through a VPN
+
+The same Debian torrent and method as [above](#2-a-real-swarm), through AirVPN's Iskandar server in Tokyo on both machines.
+
+**Mac** (Eddie):
+
+| Engine | Average Mbit/s | Steady (after 20 s) | Peak 5 s | CPU s/GB | Peak RSS MB | Peers |
+|---|---|---|---|---|---|---|
+| **Tiny Torrent** | **98.9 / 94.5** | **106.6 / 101.9** | 149 / 147 | **9.0 / 9.7** | 140 / 134 | 198 / 198 |
+| qBittorrent 5 | 79.5 / 92.2 | 82.2 / 99.4 | 177 / 143 | 13.9 / 12.2 | 805 / 829 | 130 / 126 |
+| aria2 1.37 | 78.6 / 76.8 | 83.3 / 81.5 | 114 / 113 | 11.0 / 12.5 | 48 / 30 | 160 / 105 |
+| WebTorrent 3.0.21 | 61.8 / 52.6 | 65.2 / 50.3 | 109 / 97 | 68.9 / 45.1 | 150 / 140 | 178 / 174 |
+
+**ARM** (`gluetun`):
+
+| Engine | Average Mbit/s | Steady (after 20 s) | Peak 5 s | CPU s/GB | Peak RSS MB | Peers |
+|---|---|---|---|---|---|---|
+| **Tiny Torrent** | **95.5 / 90.6** | 106.1 / 100.1 | 149 / 152 | 21.2 / 22.9 | 269 / 257 | 194 / 194 |
+| qBittorrent 5.1.0 | 81.9 / 101.4 | 94.4 / 112.1 | 142 / 160 | 34.4 / 31.0 | 932 / 1,132 | 191 / 193 |
+| aria2 1.37 | 69.1 / 84.2 | 82.2 / 102.8 | 113 / 124 | 14.6 / 13.8 | 35 / 33 | 81 / 84 |
+| WebTorrent 3.0.21 | 32.4 / 60.6 | 30.1 / 62.5 | 66 / 89 | 251 / 135 | 298 / 344 | 147 / 163 |
+
+Averaged over both rounds:
+- **Mac:** Tiny Torrent is the fastest (97 Mbit/s), 13% ahead of qBittorrent (86) and 24% ahead of aria2 (78), at the least CPU per GB.
+- **ARM:** Tiny Torrent (93) and qBittorrent (92) are level, inside the run-to-run swing, with Tiny Torrent at a third less CPU per GB and a quarter of the memory. aria2 is about 18% slower; WebTorrent is held back by its CPU, keeping a whole core busy.
+- **Most of the CPU** on ARM is the kernel delivering ~1.2 KB packets through the tunnel. Every engine pays that cost; it is most of aria2's.
+
+## Idle cost
 
 A seeding engine with no peers uses:
 - about 2.3 ms of CPU per second on the Mac (a bare Bun process with a listener uses 0.8);
@@ -220,7 +237,7 @@ Measured on the Mac.
 
 ```sh
 # Downloading
-bun bench/cli.ts local --size-mb 1024 --seeders 4 --latency-ms 150 --engines tinytorrent,aria2,webtorrent
+bun bench/cli.ts local --size-mb 1024 --seeders 4 --latency-ms 150 --runs 2 --engines tinytorrent,qbittorrent,aria2,webtorrent
 bun bench/cli.ts real <file.torrent | url | magnet> --seconds 90 --engines tinytorrent,qbittorrent,aria2,webtorrent
 
 # Seeding
