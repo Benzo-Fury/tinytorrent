@@ -164,7 +164,7 @@ export class Engine extends EventEmitter implements EngineContext {
     super();
     this.transport = config.transport ?? systemTransport();
     this.udpTrackers = new UdpTrackerClient(this.transport);
-    this.peerId = config.peerId ?? new Uint8Array(Buffer.concat([Buffer.from("-TT0100-"), randomBytes(12)]));
+    this.peerId = config.peerId ?? new Uint8Array(Buffer.concat([Buffer.from("-TT1000-"), randomBytes(12)]));
     this.options = {
       encryption: config.encryption ?? "prefer",
       maxPeersPerTorrent: config.maxPeersPerTorrent ?? 200,

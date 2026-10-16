@@ -135,7 +135,7 @@ export interface FileStatus {
 }
 
 /** Our name in extended handshakes. */
-const CLIENT = "tinytorrent 0.1.0";
+const CLIENT = "tinytorrent 1.0.0";
 /** Queue depth bounds per peer. */
 const MIN_DEPTH = 16;
 const MAX_DEPTH = 500;
