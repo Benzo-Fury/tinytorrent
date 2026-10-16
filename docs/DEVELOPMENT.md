@@ -110,13 +110,13 @@ If you need room:
 
 ## Benchmarks
 
-Everything about running benchmarks, including on a server through a VPN, is in [Benchmarks](BENCHMARKS.md#running-them). Which ones to rerun depends on the change:
+Everything about running benchmarks, including on a server with or without a VPN, is in [Benchmarks](BENCHMARKS.md#running-them). Which ones to rerun depends on the change:
 
 | You changed | Rerun |
 |---|---|
 | `wire.ts`, `mse.ts`, `picker.ts`, `storage.ts`, `verifier.ts` | `bun test test/perf`, `bench micro`, `bench local --latency-ms 150` |
 | Choking, the upload path, cache, limits | `bench seeding --engines tinytorrent,qbittorrent --runs 2 --seeder-cpus 7 --load-cpus 0-6` on the ARM server, with `--encryption off` and `prefer`. The lean sink is the default load, so the seeder is what's measured; pinning to one core makes runs comparable. Watch the kernel column as well as the total: most of the seeding cost is system calls and copies |
-| Peer discovery, connections, trackers, DHT | `bench real <torrent>` against qBittorrent and aria2, ideally through the VPN on the ARM server |
+| Peer discovery, connections, trackers, DHT | `bench real <torrent>` against qBittorrent and aria2 on the ARM server, both with no VPN and through it |
 
 Compare against the [targets](BENCHMARKS.md#targets), and update the results tables if numbers move.
 

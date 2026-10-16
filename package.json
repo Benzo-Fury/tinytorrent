@@ -1,7 +1,7 @@
 {
   "name": "tinytorrent",
-  "version": "0.1.0",
-  "description": "A tiny, fast BitTorrent engine for downloading and seeding, to build clients and services on. Pure TypeScript, zero dependencies, Bun first.",
+  "version": "1.0.0",
+  "description": "A really fast BitTorrent engine written in pure TypeScript.",
   "type": "module",
   "license": "Apache-2.0",
   "author": "Neo Haggard",

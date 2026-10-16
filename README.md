@@ -45,13 +45,20 @@ bun add tinytorrent
 ```ts
 import { Engine } from "tinytorrent";
 
+// One engine manages all your torrents and network connections
 const engine = new Engine();
+
+// Start downloading a magnet link into /downloads
 const torrent = engine.add("magnet:?xt=urn:btih:<info hash>", { dir: "/downloads" });
 
+// Fires each time a piece is downloaded and verified: print progress and speed
 torrent.on("piece", () => {
   console.log(`${(torrent.progress * 100).toFixed(1)}%  ${(torrent.downloadRate / 1e6).toFixed(1)} MB/s`);
 });
 
+// Fires once every file is complete: report it, then shut the engine down.
+// Only destroy the engine when you're finished with it (e.g. on program exit), not after each
+// torrent: it is shared by all torrents. 
 torrent.on("done", async () => {
   console.log(`${torrent.name} finished`);
   await engine.destroy();
@@ -61,7 +68,10 @@ torrent.on("done", async () => {
 `engine.add` accepts a magnet link, the bytes of a `.torrent` file, or a torrent you parsed yourself. To add a `.torrent` file from disk:
 
 ```ts
+// Read the .torrent file into bytes
 const torrentBytes = new Uint8Array(await Bun.file("/path/to/file.torrent").arrayBuffer());
+
+// Add it exactly like a magnet link
 const torrent = engine.add(torrentBytes, { dir: "/downloads" });
 ```
 
@@ -76,12 +86,20 @@ The recipes below assume `engine` from here, and use `magnet` for a magnet link 
 Add the torrent with `start: "metadata-only"`. Nothing is requested from peers until you call `select()`.
 
 ```ts
+// Fetch only the file list from peers; no file data is downloaded yet
 const torrent = engine.add(magnet, { dir: "/downloads", start: "metadata-only" });
 
+// Fires once the file list is known
 torrent.on("metadata", async () => {
   const files = torrent.files();               // [{ index, path, length, selected, downloaded }]
+
+  // Keep just the indexes of the .mkv files
   const videos = files.filter((f) => f.path.endsWith(".mkv")).map((f) => f.index);
+
+  // Nothing we want in here: remove the torrent and anything written
   if (videos.length === 0) return torrent.close({ deleteFiles: true });
+
+  // Download only the chosen files
   await torrent.select(videos);                // downloading starts here
 });
 ```
@@ -91,6 +109,7 @@ Files you don't select are never created on disk.
 ### Survive restarts without re-hashing
 
 ```ts
+// Save progress in this folder so a restart can pick up where it left off
 const engine = new Engine({ resumeDir: "/data/resume" });
 ```
 
@@ -107,13 +126,16 @@ Two options sound alike but do different things:
 
 ```ts
 const engine = new Engine({
-  port: 51413,
+  port: 51413,                                         // the port peers connect to
   portMapping: true,                                   // ask the router to forward the port (UPnP / NAT-PMP)
   seed: { enabled: true, ratio: 2, minutes: 7 * 24 * 60 },  // stop at ratio 2 or after a week
-  resumeDir: "/data/resume",
+  resumeDir: "/data/resume",                           // remember upload totals across restarts
 });
 
+// Download, then keep uploading to other peers once complete
 const torrent = engine.add(torrentBytes, { dir: "/data/torrents" });
+
+// Fires when a seed limit is hit: stop and remove the torrent (files stay on disk)
 torrent.on("seeded", () => torrent.close());           // a seed limit was reached
 ```
 
@@ -128,9 +150,13 @@ One torrent can override the engine's policy with `engine.add(…, { seed: false
 ```ts
 import { createTorrentFromPath } from "tinytorrent";
 
+// Build a .torrent from a file or folder, listing a tracker for peers to find you
 const bytes = await createTorrentFromPath("/data/album", { announce: ["udp://tracker.example:1337/announce"] });
+
+// Save it so you can share the .torrent file with others
 await Bun.write("/data/album.torrent", bytes);
 
+// Seed straight away: dir is the folder that contains "album", and no hash check is needed first
 const torrent = engine.add(bytes, { dir: "/data", seedMode: true, seed: true });
 ```
 
@@ -144,12 +170,16 @@ const torrent = engine.add(bytes, { dir: "/data", seedMode: true, seed: true });
 ### Limit bandwidth
 
 ```ts
+// Cap total speed across all torrents: 5 MB/s up, 20 MB/s down
 const engine = new Engine({
   upload:   { limitBytesPerSecond: 5_000_000 },    // whole engine
   download: { limitBytesPerSecond: 20_000_000 },
 });
+
+// Cap a single torrent's upload at 1 MB/s
 const torrent = engine.add(magnet, { dir: "/downloads", limits: { uploadBytesPerSecond: 1_000_000 } });   // one torrent
 
+// Limits can be changed while running
 engine.setLimits({ uploadBytesPerSecond: 0 });     // change at runtime; 0 = unlimited
 torrent.setLimits({ downloadBytesPerSecond: 500_000 });
 ```
@@ -165,12 +195,16 @@ import { Engine, boundTransport } from "tinytorrent";
 
 // `vpn` stands for your own code that watches the VPN connection.
 const engine = new Engine({
+  // Send all traffic from the VPN's address; null means "VPN is down, don't connect"
   transport: boundTransport({ address: () => vpn.localAddress() ?? null }),
   encryption: "prefer-plaintext",   // optional: the VPN already encrypts; cheaper on CPU
   resumeDir: "/data/resume",
 });
 
+// If the VPN drops, close every connection so nothing leaks onto the normal network
 vpn.on("down", () => engine.disconnect());   // every socket closes; files and progress kept
+
+// When it comes back, carry on where we left off
 vpn.on("up",   () => engine.reconnect());    // resumes every torrent
 ```
 
@@ -203,21 +237,21 @@ Every Tiny Torrent number below comes from the same pure TypeScript engine: no n
 
 ### Downloading
 
-An Orange Pi 5 Plus (8-core ARM) downloaded from the Debian DVD's public swarm over a home connection through a VPN. Each engine ran for 90 s, back to back, in two rounds; these are the averages:
+An Orange Pi 5 Plus (8-core ARM) downloaded from the Debian DVD's public swarm over a home connection, with no VPN. Each engine ran for 90 s, back to back, in two rounds; these are the averages:
 
 | Engine | Language | Speed | CPU per GB | Memory |
 |---|---|---|---|---|
-| **Tiny Torrent** | TypeScript | **113 Mbit/s** | 20 s | 280 MB |
-| qBittorrent (libtorrent) | C++ | 107 Mbit/s | 30 s | 1.2 GB |
-| aria2 | C++ | 88 Mbit/s | 14 s | 35 MB |
-| WebTorrent | JavaScript | 36 Mbit/s | 226 s | 300 MB |
+| **Tiny Torrent** | TypeScript | **146 Mbit/s** | 16 s | 320 MB |
+| qBittorrent (libtorrent) | C++ | 120 Mbit/s | 28 s | 1.3 GB |
+| aria2 | C++ | 134 Mbit/s | 10 s | 35 MB |
+| WebTorrent | JavaScript | 48 Mbit/s | 173 s | 300 MB |
 
-- **Level with qBittorrent**, with a third less CPU and under a quarter of the memory.
-- **3× faster than WebTorrent** at about 12× less CPU per byte. WebTorrent is limited by its CPU and keeps a whole core busy.
-- About **30% faster than aria2**.
+- **Fastest of the four**: about **20% faster than qBittorrent**, with 40% less CPU and a quarter of the memory.
+- **3× faster than WebTorrent** at about 11× less CPU per byte. WebTorrent is limited by its CPU and keeps a whole core busy.
+- About **9% faster than aria2**, which uses the least CPU.
 
 > [!NOTE]
-> qBittorrent also used the torrent's HTTP web seed, which contributed about 9 Mbit/s of its speed. Tiny Torrent doesn't use web seeds.
+> qBittorrent also used the torrent's HTTP web seed. Tiny Torrent doesn't use web seeds. Results through a VPN, on a Mac and in a local swarm are in [Benchmarks](docs/BENCHMARKS.md#downloading).
 
 ### Seeding
 

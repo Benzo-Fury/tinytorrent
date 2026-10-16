@@ -2,7 +2,7 @@
 
 > In-depth reference. The [README](../README.md#how-fast-is-it) has the headline numbers. This page has the targets the engine is held to, every result with how it was measured, and how to run the benchmarks yourself.
 
-**On this page:** [Targets](#targets) · [Hardware](#hardware) · [Downloading](#downloading) · [Seeding](#seeding) · [Engine path and microbenchmarks](#engine-path-and-microbenchmarks) · [Running them](#running-them) · [How they measure](#how-they-measure)
+**On this page:** [Targets](#targets) · [Hardware](#hardware) · [Downloading](#downloading) ([no VPN](#1-a-real-swarm-no-vpn) · [VPN](#2-a-real-swarm-through-a-vpn) · [local](#3-a-local-swarm)) · [Seeding](#seeding) · [Engine path and microbenchmarks](#engine-path-and-microbenchmarks) · [Running them](#running-them) · [How they measure](#how-they-measure)
 
 ---
 
@@ -14,7 +14,8 @@ Changes to the engine should keep these. Re-measure the affected ones before mer
 
 | Target | Result |
 |---|---|
-| At least 90% of aria2's speed on a real swarm through a VPN, and level with qBittorrent | 1.3× aria2 (113 vs 88 Mbit/s); qBittorrent 107 |
+| On a real swarm with no VPN, at least 90% of aria2's speed and level with qBittorrent | 1.09× aria2 (146 vs 134 Mbit/s); 1.21× qBittorrent (120) on ARM |
+| The same through a VPN | 1.3× aria2 (113 vs 88 Mbit/s); qBittorrent 107 |
 | Under 15 CPU-seconds per GB on the ARM board in a local swarm | 7.1 |
 | Engine path at least 300 MB/s (`perf.test.ts` gate) | About 1.5 GB/s |
 | Under 1 KB of heap growth per block (`perf.test.ts` gate) | About 7 bytes |
@@ -41,6 +42,7 @@ Changes to the engine should keep these. Re-measure the affected ones before mer
 |---|---|
 | **ARM** | Orange Pi 5 Plus: RK3588, 8 cores (4× A76 + 4× A55), NVMe, Bun in Docker |
 | **Mac** | Apple M-series laptop |
+| **Home lines** | ARM: Superloop, Brisbane (peaked at 225 Mbit/s in the runs). Mac: NextHop, Brisbane, over Wi-Fi |
 | **VPN** | AirVPN over OpenVPN UDP, from Brisbane |
 | **Versions** | aria2 1.37, WebTorrent 3.0.21 (with the fixes in `patches/`), qBittorrent 5.1.0 (Debian's `qbittorrent-nox`, libtorrent 2.0) on ARM, and qBittorrent 5 (libtorrent 2) on the Mac |
 
@@ -48,7 +50,51 @@ Results are from October 2026.
 
 ## Downloading
 
-### A real swarm through a VPN
+Three setups, each answering a different question:
+
+| Setup | What it shows |
+|---|---|
+| [1. A real swarm, no VPN](#1-a-real-swarm-no-vpn) | Raw speed against real peers on a home line |
+| [2. A real swarm, through a VPN](#2-a-real-swarm-through-a-vpn) | How the engines compare on a constrained, high-latency link, as many self-hosters run them |
+| [3. A local swarm](#3-a-local-swarm) | The engine's own ceiling, with no internet in the way |
+
+Compare engines only within one setup and one session: the swarm changes from hour to hour.
+
+### 1. A real swarm, no VPN
+
+Debian 13.7 DVD torrent (15,232 pieces of 256 KiB), 90 s per engine, back to back on the same connection, with nothing between the engine and the internet. There were two rounds in opposite orders; each cell gives round 1 / round 2.
+
+**ARM**, Docker's default network on a Brisbane home connection (Superloop). The line peaked at 225 Mbit/s during the runs; a single HTTP download from a local mirror reached 145–160.
+
+| Engine | Average Mbit/s | Steady (after 20 s) | Peak 5 s | CPU s/GB | Peak RSS MB | Peers |
+|---|---|---|---|---|---|---|
+| **Tiny Torrent** | **148.3 / 142.8** | 161.3 / 153.4 | 224 / 217 | 15.4 / 16.8 | 317 / 328 | 183 / 195 |
+| qBittorrent 5.1.0 | 131.9 / 109.0 | 142.8 / 138.8 | 207 / 223 | 25.1 / 30.9 | 1,477 / 1,216 | 173 / 192 |
+| aria2 1.37 | 145.0 / 123.2 | 165.4 / 153.7 | 225 / 217 | 9.7 / 9.9 | 35 / 33 | 82 / 80 |
+| WebTorrent 3.0.21 | 52.4 / 43.9 | 48.5 / 41.9 | 98 / 95 | 158 / 188 | 290 / 306 | 151 / 176 |
+
+Averaged over both rounds:
+- **Tiny Torrent is the fastest** (146 Mbit/s), about 20% ahead of qBittorrent (120) at 40% less CPU per GB and a quarter of the memory.
+- **aria2** is close behind (134) and the cheapest per GB, with fewer than half the peers.
+- **WebTorrent** is held back by its CPU again: a whole core busy (103–104%) for a third of the speed.
+
+**Mac**, a different home connection (NextHop, Brisbane, over Wi-Fi), where a single HTTP download reached 36–120 Mbit/s:
+
+| Engine | Average Mbit/s | Steady | Peak 5 s | CPU s/GB | Peak RSS MB |
+|---|---|---|---|---|---|
+| **Tiny Torrent** | 132.6 / 133.5 | 142.5 / 143.2 | 159 / 163 | 9.3 / 10.4 | 115 / 88 |
+| qBittorrent 5 | 134.8 / 132.5 | 142.8 / 144.3 | 189 / 189 | 10.4 / 11.0 | 876 / 858 |
+| aria2 1.37 | 128.5 / 134.7 | 136.9 / 141.0 | 173 / 163 | 9.1 / 9.8 | 39 / 54 |
+| WebTorrent 3.0.21 | 130.5 / 127.6 | 136.1 / 133.2 | 149 / 152 | 39.9 / 52.9 | 101 / 106 |
+
+- **The line is the limit here.** Every engine averaged 128–135 Mbit/s, within about 3% of each other, so this run shows that the engines can fill this connection, not which one is faster. On the Mac even WebTorrent has CPU to spare.
+- **Tiny Torrent used the least memory after aria2**, and a seventh of qBittorrent's.
+
+Notes:
+- **qBittorrent** also used the torrent's HTTP web seed (a Debian mirror). Tiny Torrent doesn't use web seeds.
+- **Hash failures:** Tiny Torrent saw one or two per run, each from a piece assembled from several peers, and refetched it.
+
+### 2. A real swarm, through a VPN
 
 ARM, Tokyo exit. Debian 13.7 DVD torrent (15,232 pieces of 256 KiB), 90 s per engine, run back to back through the same tunnel. There were two rounds in different orders; each cell gives round 1 / round 2:
 
@@ -78,7 +124,7 @@ A large real download: Ubuntu 26.04.1 live server, 2.93 GB, took 413 s (57 Mbit/
 - metadata after 9 s;
 - then 55 Mbit/s steady from DHT and PEX peers alone.
 
-### A local swarm
+### 3. A local swarm
 
 ARM, 1 GiB payload, 4 Tiny Torrent seeders, on the same machine:
 
@@ -221,13 +267,15 @@ bun bench/cli.ts micro
 - qBittorrent runs from a throwaway profile. On macOS it uses the app (set `QBT_APP` if it isn't in `/Applications`); elsewhere it uses `qbittorrent-nox` on PATH or `QBT_BIN`. The Docker image includes `qbittorrent-nox`, so `remote.sh` can benchmark it on a server.
 - Work files go in `.bench/`, or in `TT_BENCH_DIR` if set.
 
-### On a server, through a VPN
+### On a server, with or without a VPN
 
-`bench/remote.sh` copies the project to a Docker host over SSH, builds the bench image there, and runs it inside a VPN container's network namespace. Pass `-` instead of a container name for the default network.
+`bench/remote.sh` copies the project to a Docker host over SSH, builds the bench image there, and runs it inside a VPN container's network namespace. Pass `-` instead of a container name for Docker's default network, which is how the no-VPN results were measured.
 
 ```sh
 bench/remote.sh <ssh-host> <vpn-container | -> real <url> --seconds 90 --engines aria2,tinytorrent --profile /out
 ```
+
+For the no-VPN numbers, check first that the container's public IP is your ISP's (`docker run --rm curlimages/curl -s https://ipinfo.io/ip`), and run a second round with `--engines` in the opposite order.
 
 The work directory is a tmpfs, and profiles land in `~/ttbench/out` on the host.
 
