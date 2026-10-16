@@ -65,7 +65,7 @@ Use one engine per process. It starts its listener and DHT lazily, on the first 
 | `allowPeer` | `(host: string) => boolean` | allow all | Called with the IP address of every peer before it is dialled and when it connects in. Return `false` to refuse it. |
 | `maxPeersPerTorrent` | `number` | `200` | Connected peers per torrent. |
 | `maxHalfOpen` | `number` | `30` | Outgoing connection attempts in progress, across the engine. |
-| `peerId` | `Uint8Array` (20 bytes) | random `-TT0100-…` | |
+| `peerId` | `Uint8Array` (20 bytes) | random `-TT1000-…` (from the package version) | |
 
 | `encryption` | Outgoing | Incoming |
 |---|---|---|

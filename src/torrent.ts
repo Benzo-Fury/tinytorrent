@@ -34,6 +34,7 @@ import { hostOf, Swarm, type SwarmOwner, withPort } from "./swarm";
 import { Announcer } from "./tracker";
 import { recheck, SmartBan, verifyPiece } from "./verifier";
 import { MSG } from "./wire";
+import { CLIENT_NAME } from "./version";
 import type { EngineContext } from "./engine";
 
 export type TorrentState = "metadata" | "waiting" | "checking" | "downloading" | "seeding" | "done" | "paused" | "closed";
@@ -134,8 +135,6 @@ export interface FileStatus {
   downloaded: number;
 }
 
-/** Our name in extended handshakes. */
-const CLIENT = "tinytorrent 1.0.0";
 /** Queue depth bounds per peer. */
 const MIN_DEPTH = 16;
 const MAX_DEPTH = 500;
@@ -862,7 +861,7 @@ export class Torrent extends EventEmitter implements PeerOwner, SwarmOwner {
       metadataSize: this.info?.raw.length,
       port: this.engine.announcePort(),
       reqq: MAX_DEPTH,
-      client: CLIENT,
+      client: CLIENT_NAME,
       uploadOnly: this.state === "seeding",
     });
   }

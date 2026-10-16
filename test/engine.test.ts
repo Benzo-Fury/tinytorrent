@@ -4,6 +4,7 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { boundTransport, type Engine, type EncryptionPolicy, parseTorrent } from "../src/index";
 import { saveResume, resumePath } from "../src/resume";
+import { CLIENT_NAME } from "../src/version";
 import { cleanup, makePayload, seeder, tempDir, testEngine, waitFor } from "./helpers";
 
 const engines: Engine[] = [];
@@ -272,7 +273,7 @@ describe("engine", () => {
     expect(stats.state).toBe("downloading");
     expect(stats.peers.length).toBe(1);
     const peer = stats.peers[0]!;
-    expect(peer.client).toBe("tinytorrent 1.0.0");
+    expect(peer.client).toBe(CLIENT_NAME);
     expect(peer.source).toBe("manual");
     expect(peer.requests).toBeGreaterThan(0);
     expect(peer.depth).toBeGreaterThanOrEqual(16);
