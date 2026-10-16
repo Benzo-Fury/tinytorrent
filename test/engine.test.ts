@@ -272,7 +272,7 @@ describe("engine", () => {
     expect(stats.state).toBe("downloading");
     expect(stats.peers.length).toBe(1);
     const peer = stats.peers[0]!;
-    expect(peer.client).toBe("tinytorrent 0.1.0");
+    expect(peer.client).toBe("tinytorrent 1.0.0");
     expect(peer.source).toBe("manual");
     expect(peer.requests).toBeGreaterThan(0);
     expect(peer.depth).toBeGreaterThanOrEqual(16);
